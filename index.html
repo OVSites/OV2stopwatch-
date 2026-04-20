@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Untitled</title>
+    <link rel="stylesheet" href="./style.css">
+
+  </head>
+    
+  <body>
+  <!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Таймер с 21.11.2025 + Чат с гифками и реакциями</title>
+    <!-- Font Awesome 6 (иконки) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <!-- ТАЙМЕР: сколько прошло с 21.11.2025 00:45 -->
+    <div class="timer-card">
+        <div class="timer-title">
+            <i class="fas fa-hourglass-start"></i> 
+            <span>Время, прошедшее с 21 ноября 2025, 00:45</span>
+            <i class="fas fa-calendar-alt"></i>
+        </div>
+        <div id="timerDisplay">-- год, -- месяцев, -- дней ...</div>
+    </div>
+
+    <!-- Аутентификация -->
+    <div class="auth-panel">
+        <div class="auth-group">
+            <input type="text" id="regLogin" placeholder="Логин" class="auth-input">
+            <input type="password" id="regPass" placeholder="Пароль" class="auth-input">
+            <button id="registerBtn" class="btn btn-primary">Регистрация</button>
+            <button id="loginBtn" class="btn btn-info">Вход</button>
+        </div>
+        <div class="user-badge">
+            <i class="fas fa-user-astronaut"></i>
+            <span id="currentUserSpan">Гость</span>
+            <button id="logoutBtn" class="btn-danger btn" style="display: none; padding: 5px 12px;">Выйти</button>
+        </div>
+    </div>
+
+    <!-- Чат с гифками и реакциями -->
+    <div class="chat-box">
+        <div class="messages-window" id="messagesWindow">
+            <div class="message message-other">
+                <div class="msg-header"><span class="msg-username">✨ Система</span><span class="msg-time">только что</span></div>
+                <div class="msg-text">Чат активен! Зарегистрируйтесь, чтобы писать, кидать гифки и ставить реакции ❤️🔥👍</div>
+            </div>
+        </div>
+        <div class="input-row">
+            <input type="text" id="messageInput" placeholder="Напишите сообщение или отправьте GIF..." disabled>
+            <button id="sendMsgBtn" class="btn btn-primary" disabled>Отправить</button>
+            <button id="openGifBtn" class="btn btn-warning" disabled><i class="fas fa-grin-tongue-squint"></i> GIF</button>
+        </div>
+        <div id="giphyPanel" class="gif-panel">
+            <input type="text" id="gifSearch" placeholder="Поиск GIF (GIPHY)..." style="width:100%; padding: 8px; border-radius: 30px;">
+            <div id="gifList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"></div>
+        </div>
+        <div style="font-size: 11px; text-align: center; margin-top: 10px;">💬 Нажми на ❤️ 🔥 👍 😂 😮 под сообщением — поставь реакцию (доступно всем авторизованным)</div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
+    <script  src="./script.js"></script>
+
+  </body>
+  
+</html>
