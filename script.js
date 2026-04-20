@@ -53,6 +53,8 @@ async function loadData() {
             headers: { 'X-Master-Key': API_KEY }
         });
         const data = await response.json();
+        console.log('Данные из JSONBin:', data);
+        
         if (data.record) {
             messages = data.record.messages || [];
             users = data.record.users || [];
@@ -60,9 +62,23 @@ async function loadData() {
             messages = [];
             users = [];
         }
+        
+        console.log('Загружено пользователей:', users.length);
+        console.log('Список пользователей:', users);
+        
+        if (users.length === 0 && messages.length === 0) {
+            console.log('Бин пуст, инициализируем тестовыми данными');
+            users = [
+                { login: 'admin', password: '123', id: Date.now() },
+                { login: 'test', password: 'test', id: Date.now() + 1 }
+            ];
+            messages = [];
+            await saveData();
+        }
+        
         renderMessages();
     } catch (error) {
-        console.error('load error', error);
+        console.error('Ошибка загрузки:', error);
         messages = [];
         users = [];
         renderMessages();
@@ -71,7 +87,7 @@ async function loadData() {
 
 async function saveData() {
     try {
-        await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -79,8 +95,10 @@ async function saveData() {
             },
             body: JSON.stringify({ messages, users })
         });
+        const result = await response.json();
+        console.log('Сохранено:', result);
     } catch (error) {
-        console.error('save error', error);
+        console.error('Ошибка сохранения:', error);
     }
 }
 
@@ -190,15 +208,23 @@ async function register(login, pass) {
     users.push({ login, password: pass, id: Date.now() });
     await saveData();
     alert("Регистрация успешна! Теперь войдите.");
+    console.log('Пользователь зарегистрирован:', users);
 }
 
 async function login(login, pass) {
+    console.log('Попытка входа:', login, pass);
+    console.log('Текущий список users:', users);
     const user = users.find(u => u.login === login && u.password === pass);
-    if (!user) return alert("Неверный логин или пароль");
+    console.log('Найденный пользователь:', user);
+    if (!user) {
+        alert("Неверный логин или пароль");
+        return;
+    }
     currentUser = { login: user.login, id: user.id };
     updateAuthUI();
     await loadData();
     renderMessages();
+    console.log('Вход выполнен:', currentUser);
 }
 
 function logout() {
