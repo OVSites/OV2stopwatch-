@@ -189,7 +189,7 @@ async function register(login, pass) {
     if (users.find(u => u.login === login)) return alert("Логин занят");
     users.push({ login, password: pass, id: Date.now() });
     await saveData();
-    alert("Регистрация успешна");
+    alert("Регистрация успешна! Теперь войдите.");
 }
 
 async function login(login, pass) {
@@ -231,75 +231,122 @@ function updateAuthUI() {
 
 const GIPHY_KEY = 'pLUTzZ6SjLJXSwqEjE9ct0uY6hAIEZpK';
 const gifPanel = document.getElementById('giphyPanel');
+const gifSearchInput = document.getElementById('gifSearch');
+const gifListDiv = document.getElementById('gifList');
+const openGifBtn = document.getElementById('openGifBtn');
 
-document.getElementById('openGifBtn').onclick = () => {
-    if (!currentUser) return alert("Войдите для отправки GIF");
-    gifPanel.style.display = gifPanel.style.display === 'flex' ? 'none' : 'flex';
-};
+if (openGifBtn) {
+    openGifBtn.onclick = function(e) {
+        e.stopPropagation();
+        if (!currentUser) {
+            alert("Войдите для отправки GIF");
+            return;
+        }
+        if (gifPanel.style.display === 'flex') {
+            gifPanel.style.display = 'none';
+        } else {
+            gifPanel.style.display = 'flex';
+            if (gifSearchInput) gifSearchInput.focus();
+        }
+    };
+}
 
 async function searchGiphy(query) {
-    if (!query.trim()) return;
+    if (!query.trim()) {
+        if (gifListDiv) gifListDiv.innerHTML = '';
+        return;
+    }
     try {
-        const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=12`);
+        const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=12&rating=g`);
         const json = await res.json();
-        const list = document.getElementById('gifList');
-        list.innerHTML = '';
-        if (json.data && json.data.length) {
-            json.data.forEach(gif => {
-                const img = document.createElement('img');
-                img.src = gif.images.fixed_height_small.url;
-                img.className = 'gif-thumb';
-                img.onclick = async () => {
-                    await addMessage('', gif.images.fixed_height.url);
-                    gifPanel.style.display = 'none';
-                    list.innerHTML = '';
-                    document.getElementById('gifSearch').value = '';
-                };
-                list.appendChild(img);
-            });
-        } else {
-            list.innerHTML = '<span style="color:#ccc;">Гифки не найдены</span>';
+        if (gifListDiv) {
+            gifListDiv.innerHTML = '';
+            if (json.data && json.data.length) {
+                json.data.forEach(gif => {
+                    const img = document.createElement('img');
+                    img.src = gif.images.fixed_height_small.url;
+                    img.className = 'gif-thumb';
+                    img.style.cursor = 'pointer';
+                    img.onclick = async function() {
+                        await addMessage('', gif.images.fixed_height.url);
+                        if (gifPanel) gifPanel.style.display = 'none';
+                        if (gifListDiv) gifListDiv.innerHTML = '';
+                        if (gifSearchInput) gifSearchInput.value = '';
+                    };
+                    gifListDiv.appendChild(img);
+                });
+            } else {
+                gifListDiv.innerHTML = '<span style="color:#ccc;">Гифки не найдены</span>';
+            }
         }
     } catch(e) {
-        console.error(e);
+        console.error('Giphy error:', e);
+        if (gifListDiv) gifListDiv.innerHTML = '<span style="color:#ccc;">Ошибка загрузки гифок</span>';
     }
 }
 
-document.getElementById('gifSearch').oninput = (e) => {
-    if (e.target.value.length > 2) searchGiphy(e.target.value);
-};
+if (gifSearchInput) {
+    gifSearchInput.oninput = function(e) {
+        const val = e.target.value;
+        if (val.length > 2) {
+            searchGiphy(val);
+        } else if (val.length === 0) {
+            if (gifListDiv) gifListDiv.innerHTML = '';
+        }
+    };
+}
 
-document.getElementById('registerBtn').onclick = async () => {
-    const login = document.getElementById('regLogin').value;
-    const pass = document.getElementById('regPass').value;
-    await register(login, pass);
-};
-document.getElementById('loginBtn').onclick = async () => {
-    const login = document.getElementById('regLogin').value;
-    const pass = document.getElementById('regPass').value;
-    await login(login, pass);
-};
-document.getElementById('logoutBtn').onclick = logout;
-document.getElementById('sendMsgBtn').onclick = async () => {
-    const text = document.getElementById('messageInput').value;
-    if (text.trim()) {
-        await addMessage(text);
-        document.getElementById('messageInput').value = '';
-    }
-};
-document.getElementById('messageInput').onkeypress = (e) => {
-    if (e.key === 'Enter') document.getElementById('sendMsgBtn').click();
-};
-
-document.addEventListener('click', (ev) => {
-    if (gifPanel && !gifPanel.contains(ev.target) && ev.target.id !== 'openGifBtn') {
-        gifPanel.style.display = 'none';
+document.addEventListener('click', function(ev) {
+    if (gifPanel && gifPanel.style.display === 'flex') {
+        if (!gifPanel.contains(ev.target) && ev.target !== openGifBtn) {
+            gifPanel.style.display = 'none';
+        }
     }
 });
+
+const registerBtn = document.getElementById('registerBtn');
+const loginBtn = document.getElementById('loginBtn');
+const logoutBtnElem = document.getElementById('logoutBtn');
+const sendMsgBtn = document.getElementById('sendMsgBtn');
+const messageInput = document.getElementById('messageInput');
+
+if (registerBtn) {
+    registerBtn.onclick = async function() {
+        const login = document.getElementById('regLogin').value;
+        const pass = document.getElementById('regPass').value;
+        await register(login, pass);
+    };
+}
+if (loginBtn) {
+    loginBtn.onclick = async function() {
+        const login = document.getElementById('regLogin').value;
+        const pass = document.getElementById('regPass').value;
+        await login(login, pass);
+    };
+}
+if (logoutBtnElem) {
+    logoutBtnElem.onclick = logout;
+}
+if (sendMsgBtn) {
+    sendMsgBtn.onclick = async function() {
+        const text = messageInput ? messageInput.value : '';
+        if (text.trim()) {
+            await addMessage(text);
+            if (messageInput) messageInput.value = '';
+        }
+    };
+}
+if (messageInput) {
+    messageInput.onkeypress = function(e) {
+        if (e.key === 'Enter') {
+            if (sendMsgBtn) sendMsgBtn.click();
+        }
+    };
+}
 
 loadData();
 updateAuthUI();
 
-setInterval(async () => {
+setInterval(async function() {
     await loadData();
 }, 2000);
