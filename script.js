@@ -1,31 +1,31 @@
-// -------------------- ТАЙМЕР ОТ 21.11.2025 0:45 (прошедшее время) --------------------
-const startDate = new Date(2025, 10, 21, 0, 45, 0); // 21 ноября 2025, 00:45
 
-function formatElapsedTime(ms) {
-    if (ms < 0) return "Ожидаем старта (ещё не наступило)";
-    const totalSeconds = Math.floor(ms / 1000);
-    const years = Math.floor(totalSeconds / (365.25 * 24 * 3600));
-    let remaining = totalSeconds % (365.25 * 24 * 3600);
-    const months = Math.floor(remaining / (30.44 * 24 * 3600));
-    remaining %= (30.44 * 24 * 3600);
-    const days = Math.floor(remaining / (24 * 3600));
-    remaining %= (24 * 3600);
-    const hours = Math.floor(remaining / 3600);
-    remaining %= 3600;
-    const minutes = Math.floor(remaining / 60);
-    const seconds = remaining % 60;
+const onevisionCloseDate = new Date(2025, 10, 21, 0, 45, 0);
+
+function formatElapsed(ms) {
+    if (ms < 0) return "OneVision ещё работает";
+    const sec = Math.floor(ms / 1000);
+    const years = Math.floor(sec / 31536000);
+    let rem = sec % 31536000;
+    const months = Math.floor(rem / 2592000);
+    rem %= 2592000;
+    const days = Math.floor(rem / 86400);
+    rem %= 86400;
+    const hours = Math.floor(rem / 3600);
+    rem %= 3600;
+    const minutes = Math.floor(rem / 60);
+    const seconds = rem % 60;
     
     const parts = [];
-    if (years > 0) parts.push(`${years} ${declension(years, 'год', 'года', 'лет')}`);
-    if (months > 0) parts.push(`${months} ${declension(months, 'месяц', 'месяца', 'месяцев')}`);
-    if (days > 0) parts.push(`${days} ${declension(days, 'день', 'дня', 'дней')}`);
-    if (hours > 0) parts.push(`${hours} ${declension(hours, 'час', 'часа', 'часов')}`);
-    if (minutes > 0) parts.push(`${minutes} ${declension(minutes, 'минута', 'минуты', 'минут')}`);
-    if (seconds > 0 || parts.length === 0) parts.push(`${seconds} ${declension(seconds, 'секунда', 'секунды', 'секунд')}`);
+    if (years) parts.push(`${years} ${decl(years, 'год', 'года', 'лет')}`);
+    if (months) parts.push(`${months} ${decl(months, 'месяц', 'месяца', 'месяцев')}`);
+    if (days) parts.push(`${days} ${decl(days, 'день', 'дня', 'дней')}`);
+    if (hours) parts.push(`${hours} ${decl(hours, 'час', 'часа', 'часов')}`);
+    if (minutes) parts.push(`${minutes} ${decl(minutes, 'минута', 'минуты', 'минут')}`);
+    if (seconds) parts.push(`${seconds} ${decl(seconds, 'секунда', 'секунды', 'секунд')}`);
     return parts.join(', ');
 }
 
-function declension(n, one, two, five) {
+function decl(n, one, two, five) {
     n = Math.abs(n) % 100;
     if (n > 10 && n < 20) return five;
     const last = n % 10;
@@ -35,161 +35,172 @@ function declension(n, one, two, five) {
 }
 
 function updateTimer() {
-    const now = new Date();
-    const diff = now - startDate;
-    const timerEl = document.getElementById('timerDisplay');
-    if (diff < 0) {
-        timerEl.innerText = "Событие ещё не наступило (будет 21.11.2025 00:45)";
-    } else {
-        timerEl.innerText = formatElapsedTime(diff);
-    }
+    const diff = Date.now() - onevisionCloseDate;
+    document.getElementById('timerDisplay').innerText = diff < 0 ? "Ожидание закрытия..." : formatElapsed(diff);
 }
 updateTimer();
 setInterval(updateTimer, 1000);
 
-// ---------- Хранилище (users, messages, сессия) ----------
-let users = JSON.parse(localStorage.getItem('chat_users_v2')) || [];
-let messages = JSON.parse(localStorage.getItem('chat_messages_v2')) || [];
-let currentUser = JSON.parse(localStorage.getItem('chat_current_user_v2')) || null;
+const BIN_ID = '69e6190236566621a8d19bf9'; 
+const API_KEY = '$2a$10$6QlLahJUk93.BHg/nxpQousXDsOqzmzpeN1vSL4w1j1f7Hvi2Q4Xq'; 
+let currentUser = null;
+let messages = [];
+let users = [];
 
-function saveUsers() { localStorage.setItem('chat_users_v2', JSON.stringify(users)); }
-function saveMessages() { localStorage.setItem('chat_messages_v2', JSON.stringify(messages)); }
-function saveCurrent() { localStorage.setItem('chat_current_user_v2', JSON.stringify(currentUser)); }
-
-// Реакции: хранятся в message.reactions как { "❤️": ["user1","user2"] }
-function toggleReaction(msgId, emoji, username) {
-    const msg = messages.find(m => m.id === msgId);
-    if (!msg) return false;
-    if (!msg.reactions) msg.reactions = {};
-    if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
-    const idx = msg.reactions[emoji].indexOf(username);
-    if (idx === -1) {
-        msg.reactions[emoji].push(username);
-    } else {
-        msg.reactions[emoji].splice(idx, 1);
-        if (msg.reactions[emoji].length === 0) delete msg.reactions[emoji];
+// Загрузка данных с сервера
+async function loadData() {
+    try {
+        const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+            headers: { 'X-Master-Key': API_KEY }
+        });
+        const data = await response.json();
+        messages = data.record.messages || [];
+        users = data.record.users || [];
+        renderMessages();
+    } catch (error) {
+        console.error('Ошибка загрузки:', error);
+        messages = [];
+        users = [];
     }
-    saveMessages();
-    renderMessages();
-    return true;
 }
 
-// рендер сообщений
+async function saveData() {
+    try {
+        await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': API_KEY
+            },
+            body: JSON.stringify({ messages, users })
+        });
+    } catch (error) {
+        console.error('Ошибка сохранения:', error);
+    }
+}
+
 function renderMessages() {
     const container = document.getElementById('messagesWindow');
     if (!container) return;
-    const login = currentUser ? currentUser.login : null;
+    const login = currentUser?.login;
     container.innerHTML = '';
+    
     if (messages.length === 0) {
-        const emptyDiv = document.createElement('div');
-        emptyDiv.className = 'message message-other';
-        emptyDiv.innerHTML = `<div class="msg-header"><span class="msg-username">💬 Чат</span><span class="msg-time"></span></div><div class="msg-text">Напишите первое сообщение или отправьте гифку!</div>`;
-        container.appendChild(emptyDiv);
-    } else {
-        messages.forEach(msg => {
-            const isOwn = (login === msg.username);
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${isOwn ? 'message-own' : 'message-other'}`;
-            const timeStr = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second:'2-digit' });
-            let gifHtml = msg.gifUrl ? `<img src="${msg.gifUrl}" class="msg-gif" alt="gif" loading="lazy">` : '';
-            let reactionsHtml = '';
-            if (msg.reactions && Object.keys(msg.reactions).length) {
-                const chips = Object.entries(msg.reactions).map(([emoji, usersArr]) => {
-                    return `<span class="reaction-chip">${emoji} ${usersArr.length}</span>`;
-                }).join('');
-                reactionsHtml = `<div class="reaction-list">${chips}</div>`;
-            }
-            let reactionButtons = '';
-            if (currentUser) {
-                const emojiList = ['❤️', '🔥', '👍', '😂', '😮'];
-                reactionButtons = `<div class="quick-emoji-set">${emojiList.map(e => `<button class="reaction-btn react-emoji" data-msgid="${msg.id}" data-emoji="${e}">${e}</button>`).join('')}</div>`;
-            }
-            msgDiv.innerHTML = `
-                <div class="msg-header">
-                    <span class="msg-username">${escapeHtml(msg.username)}</span>
-                    <span class="msg-time">${timeStr}</span>
-                </div>
-                <div class="msg-text">${escapeHtml(msg.text)}</div>
-                ${gifHtml}
-                <div class="reaction-zone">
-                    ${reactionButtons}
-                    ${reactionsHtml}
-                </div>
-            `;
-            container.appendChild(msgDiv);
-        });
+        container.innerHTML = '<div class="message message-other"><div class="msg-header"><span class="msg-username">📢 Система</span></div><div>Пока нет сообщений. Напишите первым!</div></div>';
+        return;
     }
-    container.scrollTop = container.scrollHeight;
-    // обработчики на реакциях
-    document.querySelectorAll('.react-emoji').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const msgId = parseInt(btn.dataset.msgid);
-            const emoji = btn.dataset.emoji;
-            if (currentUser) toggleReaction(msgId, emoji, currentUser.login);
-            else alert("Войдите, чтобы ставить реакции!");
-        });
+    
+    messages.forEach(msg => {
+        const isOwn = login === msg.username;
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${isOwn ? 'message-own' : 'message-other'}`;
+        const time = new Date(msg.timestamp).toLocaleTimeString();
+        let gifHtml = msg.gifUrl ? `<img src="${msg.gifUrl}" class="msg-gif" alt="gif">` : '';
+        
+        let reactionsHtml = '';
+        if (msg.reactions && Object.keys(msg.reactions).length) {
+            reactionsHtml = `<div class="reaction-list">${Object.entries(msg.reactions).map(([emoji, users]) => 
+                `<span class="reaction-chip">${emoji} ${users.length}</span>`
+            ).join('')}</div>`;
+        }
+        
+        let reactionBtns = '';
+        if (currentUser) {
+            const emojis = ['❤️', '🔥', '👍', '😂', '😮'];
+            reactionBtns = `<div class="reaction-zone">${emojis.map(e => 
+                `<button class="reaction-btn" data-msgid="${msg.id}" data-emoji="${e}">${e}</button>`
+            ).join('')}</div>`;
+        }
+        
+        msgDiv.innerHTML = `
+            <div class="msg-header">
+                <span class="msg-username">${escapeHtml(msg.username)}</span>
+                <span class="msg-time">${time}</span>
+            </div>
+            <div class="msg-text">${escapeHtml(msg.text)}</div>
+            ${gifHtml}
+            ${reactionBtns}
+            ${reactionsHtml}
+        `;
+        container.appendChild(msgDiv);
     });
+    
+    container.scrollTop = container.scrollHeight;
+    document.querySelectorAll('.reaction-btn').forEach(btn => {
+        btn.removeEventListener('click', reactionHandler);
+        btn.addEventListener('click', reactionHandler);
+    });
+}
+
+function reactionHandler(e) {
+    const msgId = parseInt(e.target.dataset.msgid);
+    const emoji = e.target.dataset.emoji;
+    if (!currentUser) return alert("Войдите для реакций!");
+    toggleReaction(msgId, emoji, currentUser.login);
+}
+
+function toggleReaction(msgId, emoji, username) {
+    const msg = messages.find(m => m.id === msgId);
+    if (!msg) return;
+    if (!msg.reactions) msg.reactions = {};
+    if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
+    const idx = msg.reactions[emoji].indexOf(username);
+    if (idx === -1) msg.reactions[emoji].push(username);
+    else msg.reactions[emoji].splice(idx, 1);
+    if (msg.reactions[emoji].length === 0) delete msg.reactions[emoji];
+    saveData();
+    renderMessages();
 }
 
 function escapeHtml(str) {
     if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
+    return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m));
 }
 
-// Отправка сообщения
-function addMessage(text, gifUrl = null) {
-    if (!currentUser) { alert("Авторизуйтесь для отправки"); return false; }
-    if ((!text || !text.trim()) && !gifUrl) return false;
-    const newMsg = {
+async function addMessage(text, gifUrl = null) {
+    if (!currentUser) return alert("Войдите в аккаунт!");
+    if (!text.trim() && !gifUrl) return;
+    messages.unshift({
         id: Date.now(),
         username: currentUser.login,
-        text: (text || "").trim(),
+        text: text.trim() || '',
         gifUrl: gifUrl,
         timestamp: Date.now(),
         reactions: {}
-    };
-    messages.push(newMsg);
-    saveMessages();
+    });
+    await saveData();
     renderMessages();
-    return true;
 }
 
-// Регистрация / Логин
-function registerUser(login, pass) {
-    if (!login || !pass) { alert("Заполните логин и пароль"); return false; }
-    if (users.find(u => u.login === login)) { alert("Пользователь уже существует"); return false; }
+async function register(login, pass) {
+    if (!login || !pass) return alert("Введите логин и пароль");
+    if (users.find(u => u.login === login)) return alert("Логин занят");
     users.push({ login, password: pass, id: Date.now() });
-    saveUsers();
+    await saveData();
     alert("Регистрация успешна! Теперь войдите.");
-    return true;
 }
-function loginUser(login, pass) {
+
+async function login(login, pass) {
     const user = users.find(u => u.login === login && u.password === pass);
-    if (!user) { alert("Неверные данные"); return false; }
+    if (!user) return alert("Неверный логин или пароль");
     currentUser = { login: user.login, id: user.id };
-    saveCurrent();
     updateAuthUI();
     renderMessages();
-    return true;
 }
-function logoutUser() {
+
+function logout() {
     currentUser = null;
-    saveCurrent();
     updateAuthUI();
     renderMessages();
 }
+
 function updateAuthUI() {
     const span = document.getElementById('currentUserSpan');
     const logoutBtn = document.getElementById('logoutBtn');
     const msgInput = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendMsgBtn');
     const gifBtn = document.getElementById('openGifBtn');
+    
     if (currentUser) {
         span.innerText = currentUser.login;
         logoutBtn.style.display = 'inline-block';
@@ -205,83 +216,61 @@ function updateAuthUI() {
     }
 }
 
-// GIPHY интеграция (публичный API ключ)
 const GIPHY_KEY = 'pLUTzZ6SjLJXSwqEjE9ct0uY6hAIEZpK';
-const gifPanelDiv = document.getElementById('giphyPanel');
-const gifListDiv = document.getElementById('gifList');
-document.getElementById('openGifBtn').addEventListener('click', () => {
-    if (!currentUser) { alert("Войдите чтобы использовать GIF"); return; }
-    if (gifPanelDiv.style.display === 'flex') gifPanelDiv.style.display = 'none';
-    else { gifPanelDiv.style.display = 'flex'; document.getElementById('gifSearch').focus(); }
-});
-async function searchGiphy(term) {
-    if (!term.trim()) { gifListDiv.innerHTML = ''; return; }
-    try {
-        const url = `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(term)}&limit=15&rating=g`;
-        const res = await fetch(url);
-        const json = await res.json();
-        gifListDiv.innerHTML = '';
-        if (json.data && json.data.length) {
-            json.data.forEach(gif => {
-                const img = document.createElement('img');
-                img.src = gif.images.fixed_height_small.url;
-                img.className = 'gif-thumb';
-                img.title = "Нажми, чтобы отправить";
-                img.addEventListener('click', () => {
-                    addMessage('', gif.images.fixed_height.url);
-                    gifPanelDiv.style.display = 'none';
-                    gifListDiv.innerHTML = '';
-                    document.getElementById('gifSearch').value = '';
-                });
-                gifListDiv.appendChild(img);
-            });
-        } else {
-            gifListDiv.innerHTML = '<span style="color:#ccc;">Гифки не найдены</span>';
-        }
-    } catch(e) { console.warn(e); gifListDiv.innerHTML = '<span>Ошибка загрузки гифок</span>'; }
-}
-document.getElementById('gifSearch').addEventListener('input', (e) => {
-    const val = e.target.value;
-    if (val.length > 2) searchGiphy(val);
-    else if (val.length === 0) gifListDiv.innerHTML = '';
-});
-document.addEventListener('click', (ev) => {
-    if (gifPanelDiv && !gifPanelDiv.contains(ev.target) && ev.target.id !== 'openGifBtn') {
-        gifPanelDiv.style.display = 'none';
-    }
-});
+const gifPanel = document.getElementById('giphyPanel');
 
-// UI Кнопки
-document.getElementById('registerBtn').addEventListener('click', () => {
-    const l = document.getElementById('regLogin').value;
-    const p = document.getElementById('regPass').value;
-    registerUser(l, p);
-});
-document.getElementById('loginBtn').addEventListener('click', () => {
-    const l = document.getElementById('regLogin').value;
-    const p = document.getElementById('regPass').value;
-    loginUser(l, p);
-});
-document.getElementById('logoutBtn').addEventListener('click', logoutUser);
-document.getElementById('sendMsgBtn').addEventListener('click', () => {
-    const txt = document.getElementById('messageInput').value;
-    if (addMessage(txt)) document.getElementById('messageInput').value = '';
-});
-document.getElementById('messageInput').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') document.getElementById('sendMsgBtn').click();
-});
+document.getElementById('openGifBtn').onclick = () => {
+    if (!currentUser) return alert("Войдите для отправки GIF");
+    gifPanel.style.display = gifPanel.style.display === 'flex' ? 'none' : 'flex';
+};
 
-// Демо-сообщение для примера (если пусто)
-if (messages.length === 0) {
-    messages.push({
-        id: 9000,
-        username: "DemoUser",
-        text: "Ура! Таймер идёт ОТ 21.11.2025! Кидайте гифки и реакции :)",
-        gifUrl: null,
-        timestamp: Date.now() - 1800000,
-        reactions: { "❤️": ["DemoUser"], "🔥": ["Admin"] }
+async function searchGiphy(query) {
+    if (!query.trim()) return;
+    const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=12`);
+    const json = await res.json();
+    const list = document.getElementById('gifList');
+    list.innerHTML = '';
+    json.data.forEach(gif => {
+        const img = document.createElement('img');
+        img.src = gif.images.fixed_height_small.url;
+        img.className = 'gif-thumb';
+        img.onclick = () => {
+            addMessage('', gif.images.fixed_height.url);
+            gifPanel.style.display = 'none';
+            list.innerHTML = '';
+        };
+        list.appendChild(img);
     });
-    saveMessages();
 }
+
+document.getElementById('gifSearch').oninput = (e) => {
+    if (e.target.value.length > 2) searchGiphy(e.target.value);
+};
+
+setInterval(async () => {
+    await loadData();
+}, 2000);
+
+// ========== ИНИЦИАЛИЗАЦИЯ ==========
+document.getElementById('registerBtn').onclick = () => {
+    const login = document.getElementById('regLogin').value;
+    const pass = document.getElementById('regPass').value;
+    register(login, pass);
+};
+document.getElementById('loginBtn').onclick = () => {
+    const login = document.getElementById('regLogin').value;
+    const pass = document.getElementById('regPass').value;
+    login(login, pass);
+};
+document.getElementById('logoutBtn').onclick = logout;
+document.getElementById('sendMsgBtn').onclick = () => {
+    const text = document.getElementById('messageInput').value;
+    addMessage(text);
+    document.getElementById('messageInput').value = '';
+};
+document.getElementById('messageInput').onkeypress = (e) => {
+    if (e.key === 'Enter') document.getElementById('sendMsgBtn').click();
+};
+
+loadData();
 updateAuthUI();
-renderMessages();
