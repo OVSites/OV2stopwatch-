@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Секундомер с закрытия OneVision</title>
+    <title>OneVision Timer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -11,10 +11,11 @@
 <div class="container">
     <div class="timer-card">
         <div class="timer-title">
-            <i class="fas fa-door-closed"></i> 
+            <i class="fas fa-door-closed"></i>
             <span>Время с закрытия OneVision</span>
         </div>
-        <div id="timerDisplay">-- год, -- месяцев, -- дней ...</div>
+        <div id="timerDisplay"></div>
+        <div class="timer-sub">OneVision закрылся 21 ноября 2025 года в 00:45</div>
     </div>
 
     <div class="auth-panel">
@@ -27,7 +28,7 @@
         <div class="user-badge">
             <i class="fas fa-user"></i>
             <span id="currentUserSpan">Гость</span>
-            <button id="logoutBtn" class="btn-danger btn" style="display: none;">Выйти</button>
+            <button id="logoutBtn" class="btn-danger btn">Выйти</button>
         </div>
     </div>
 
