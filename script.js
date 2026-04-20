@@ -40,8 +40,8 @@ function updateTimer() {
 updateTimer();
 setInterval(updateTimer, 1000);
 
-const BIN_ID = '67e8e1c18a456b796682b6c9';
-const API_KEY = '$2a$10$zKjLq5xY8wQ9xZ1xW2xV3uX5xY8wQ9xZ1xW2xV3uX5';
+const BIN_ID = '69e61bdeaaba8821971b203d';
+const API_KEY = '$2a$10$VXRfl1YZWDHDQEao2g50KuIPQmowJDgPCVjr3lGgywZeUNOb9T4VC';
 
 let currentUser = null;
 let messages = [];
