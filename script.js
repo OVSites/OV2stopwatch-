@@ -1,5 +1,13 @@
-
 const onevisionCloseDate = new Date(2025, 10, 21, 0, 45, 0);
+
+function decl(n, one, two, five) {
+    n = Math.abs(n) % 100;
+    if (n > 10 && n < 20) return five;
+    const last = n % 10;
+    if (last === 1) return one;
+    if (last >= 2 && last <= 4) return two;
+    return five;
+}
 
 function formatElapsed(ms) {
     if (ms < 0) return "OneVision ещё работает";
@@ -25,15 +33,6 @@ function formatElapsed(ms) {
     return parts.join(', ');
 }
 
-function decl(n, one, two, five) {
-    n = Math.abs(n) % 100;
-    if (n > 10 && n < 20) return five;
-    const last = n % 10;
-    if (last === 1) return one;
-    if (last >= 2 && last <= 4) return two;
-    return five;
-}
-
 function updateTimer() {
     const diff = Date.now() - onevisionCloseDate;
     document.getElementById('timerDisplay').innerText = diff < 0 ? "Ожидание закрытия..." : formatElapsed(diff);
@@ -41,8 +40,9 @@ function updateTimer() {
 updateTimer();
 setInterval(updateTimer, 1000);
 
-const BIN_ID = '69e61bdeaaba8821971b203d'; 
-const API_KEY = '$2a$10$VXRfl1YZWDHDQEao2g50KuIPQmowJDgPCVjr3lGgywZeUNOb9T4VC'; 
+const BIN_ID = '67e8e1c18a456b796682b6c9';
+const API_KEY = '$2a$10$zKjLq5xY8wQ9xZ1xW2xV3uX5xY8wQ9xZ1xW2xV3uX5';
+
 let currentUser = null;
 let messages = [];
 let users = [];
@@ -53,13 +53,19 @@ async function loadData() {
             headers: { 'X-Master-Key': API_KEY }
         });
         const data = await response.json();
-        messages = data.record.messages || [];
-        users = data.record.users || [];
+        if (data.record) {
+            messages = data.record.messages || [];
+            users = data.record.users || [];
+        } else {
+            messages = [];
+            users = [];
+        }
         renderMessages();
     } catch (error) {
-        console.error('Ошибка загрузки:', error);
+        console.error('load error', error);
         messages = [];
         users = [];
+        renderMessages();
     }
 }
 
@@ -74,7 +80,7 @@ async function saveData() {
             body: JSON.stringify({ messages, users })
         });
     } catch (error) {
-        console.error('Ошибка сохранения:', error);
+        console.error('save error', error);
     }
 }
 
@@ -85,11 +91,13 @@ function renderMessages() {
     container.innerHTML = '';
     
     if (messages.length === 0) {
-        container.innerHTML = '<div class="message message-other"><div class="msg-header"><span class="msg-username">📢 Система</span></div><div>Пока нет сообщений. Напишите первым!</div></div>';
+        container.innerHTML = '<div class="message message-other"><div class="msg-header"><span class="msg-username">📢 Система</span></div><div>Нет сообщений. Напишите первым!</div></div>';
         return;
     }
     
-    messages.forEach(msg => {
+    const sortedMessages = [...messages].reverse();
+    
+    sortedMessages.forEach(msg => {
         const isOwn = login === msg.username;
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${isOwn ? 'message-own' : 'message-other'}`;
@@ -98,8 +106,8 @@ function renderMessages() {
         
         let reactionsHtml = '';
         if (msg.reactions && Object.keys(msg.reactions).length) {
-            reactionsHtml = `<div class="reaction-list">${Object.entries(msg.reactions).map(([emoji, users]) => 
-                `<span class="reaction-chip">${emoji} ${users.length}</span>`
+            reactionsHtml = `<div class="reaction-list">${Object.entries(msg.reactions).map(([emoji, usersArr]) => 
+                `<span class="reaction-chip">${emoji} ${usersArr.length}</span>`
             ).join('')}</div>`;
         }
         
@@ -125,6 +133,7 @@ function renderMessages() {
     });
     
     container.scrollTop = container.scrollHeight;
+    
     document.querySelectorAll('.reaction-btn').forEach(btn => {
         btn.removeEventListener('click', reactionHandler);
         btn.addEventListener('click', reactionHandler);
@@ -134,7 +143,7 @@ function renderMessages() {
 function reactionHandler(e) {
     const msgId = parseInt(e.target.dataset.msgid);
     const emoji = e.target.dataset.emoji;
-    if (!currentUser) return alert("Войдите для реакций!");
+    if (!currentUser) return alert("Войдите для реакций");
     toggleReaction(msgId, emoji, currentUser.login);
 }
 
@@ -144,9 +153,12 @@ function toggleReaction(msgId, emoji, username) {
     if (!msg.reactions) msg.reactions = {};
     if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
     const idx = msg.reactions[emoji].indexOf(username);
-    if (idx === -1) msg.reactions[emoji].push(username);
-    else msg.reactions[emoji].splice(idx, 1);
-    if (msg.reactions[emoji].length === 0) delete msg.reactions[emoji];
+    if (idx === -1) {
+        msg.reactions[emoji].push(username);
+    } else {
+        msg.reactions[emoji].splice(idx, 1);
+        if (msg.reactions[emoji].length === 0) delete msg.reactions[emoji];
+    }
     saveData();
     renderMessages();
 }
@@ -157,18 +169,19 @@ function escapeHtml(str) {
 }
 
 async function addMessage(text, gifUrl = null) {
-    if (!currentUser) return alert("Войдите в аккаунт!");
+    if (!currentUser) return alert("Войдите в аккаунт");
     if (!text.trim() && !gifUrl) return;
-    messages.unshift({
+    const newMsg = {
         id: Date.now(),
         username: currentUser.login,
         text: text.trim() || '',
         gifUrl: gifUrl,
         timestamp: Date.now(),
         reactions: {}
-    });
+    };
+    messages.push(newMsg);
     await saveData();
-    renderMessages();
+    await loadData();
 }
 
 async function register(login, pass) {
@@ -176,7 +189,7 @@ async function register(login, pass) {
     if (users.find(u => u.login === login)) return alert("Логин занят");
     users.push({ login, password: pass, id: Date.now() });
     await saveData();
-    alert("Регистрация успешна! Теперь войдите.");
+    alert("Регистрация успешна");
 }
 
 async function login(login, pass) {
@@ -184,6 +197,7 @@ async function login(login, pass) {
     if (!user) return alert("Неверный логин или пароль");
     currentUser = { login: user.login, id: user.id };
     updateAuthUI();
+    await loadData();
     renderMessages();
 }
 
@@ -225,50 +239,67 @@ document.getElementById('openGifBtn').onclick = () => {
 
 async function searchGiphy(query) {
     if (!query.trim()) return;
-    const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=12`);
-    const json = await res.json();
-    const list = document.getElementById('gifList');
-    list.innerHTML = '';
-    json.data.forEach(gif => {
-        const img = document.createElement('img');
-        img.src = gif.images.fixed_height_small.url;
-        img.className = 'gif-thumb';
-        img.onclick = () => {
-            addMessage('', gif.images.fixed_height.url);
-            gifPanel.style.display = 'none';
-            list.innerHTML = '';
-        };
-        list.appendChild(img);
-    });
+    try {
+        const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=12`);
+        const json = await res.json();
+        const list = document.getElementById('gifList');
+        list.innerHTML = '';
+        if (json.data && json.data.length) {
+            json.data.forEach(gif => {
+                const img = document.createElement('img');
+                img.src = gif.images.fixed_height_small.url;
+                img.className = 'gif-thumb';
+                img.onclick = async () => {
+                    await addMessage('', gif.images.fixed_height.url);
+                    gifPanel.style.display = 'none';
+                    list.innerHTML = '';
+                    document.getElementById('gifSearch').value = '';
+                };
+                list.appendChild(img);
+            });
+        } else {
+            list.innerHTML = '<span style="color:#ccc;">Гифки не найдены</span>';
+        }
+    } catch(e) {
+        console.error(e);
+    }
 }
 
 document.getElementById('gifSearch').oninput = (e) => {
     if (e.target.value.length > 2) searchGiphy(e.target.value);
 };
 
-setInterval(async () => {
-    await loadData();
-}, 2000);
-
-document.getElementById('registerBtn').onclick = () => {
+document.getElementById('registerBtn').onclick = async () => {
     const login = document.getElementById('regLogin').value;
     const pass = document.getElementById('regPass').value;
-    register(login, pass);
+    await register(login, pass);
 };
-document.getElementById('loginBtn').onclick = () => {
+document.getElementById('loginBtn').onclick = async () => {
     const login = document.getElementById('regLogin').value;
     const pass = document.getElementById('regPass').value;
-    login(login, pass);
+    await login(login, pass);
 };
 document.getElementById('logoutBtn').onclick = logout;
-document.getElementById('sendMsgBtn').onclick = () => {
+document.getElementById('sendMsgBtn').onclick = async () => {
     const text = document.getElementById('messageInput').value;
-    addMessage(text);
-    document.getElementById('messageInput').value = '';
+    if (text.trim()) {
+        await addMessage(text);
+        document.getElementById('messageInput').value = '';
+    }
 };
 document.getElementById('messageInput').onkeypress = (e) => {
     if (e.key === 'Enter') document.getElementById('sendMsgBtn').click();
 };
 
+document.addEventListener('click', (ev) => {
+    if (gifPanel && !gifPanel.contains(ev.target) && ev.target.id !== 'openGifBtn') {
+        gifPanel.style.display = 'none';
+    }
+});
+
 loadData();
 updateAuthUI();
+
+setInterval(async () => {
+    await loadData();
+}, 2000);
