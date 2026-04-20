@@ -42,7 +42,7 @@ updateTimer();
 setInterval(updateTimer, 1000);
 
 const BIN_ID = '69e6190236566621a8d19bf9'; 
-const API_KEY = '$2a$10$6QlLahJUk93.BHg/nxpQousXDsOqzmzpeN1vSL4w1j1f7Hvi2Q4Xq'; 
+const API_KEY = '$2a$10$VXRfl1YZWDHDQEao2g50KuIPQmowJDgPCVjr3lGgywZeUNOb9T4VC'; 
 let currentUser = null;
 let messages = [];
 let users = [];
@@ -251,7 +251,6 @@ setInterval(async () => {
     await loadData();
 }, 2000);
 
-// ========== ИНИЦИАЛИЗАЦИЯ ==========
 document.getElementById('registerBtn').onclick = () => {
     const login = document.getElementById('regLogin').value;
     const pass = document.getElementById('regPass').value;
