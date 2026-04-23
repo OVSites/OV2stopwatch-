@@ -280,18 +280,139 @@
     const gifListDiv = document.getElementById('gifList');
     const openGifBtn = document.getElementById('openGifBtn');
 
-    const FALLBACK_GIFS = [
-        'https://media1.tenor.com/m/-I9TzQqJk5oAAAAC/cat-cat-stare.gif',
-        'https://media1.tenor.com/m/F7nLh6N0VXsAAAAC/dog-dog-stare.gif',
-        'https://media1.tenor.com/m/mCiM7CmGGI4AAAAC/naruto-run.gif',
-        'https://media1.tenor.com/m/5o7hN6qKvL0AAAAC/peach-cat.gif',
-        'https://media1.tenor.com/m/Jk7TjGqXqEoAAAAC/dancing-banana.gif',
-        'https://media1.tenor.com/m/vN8jJ5qJ8L0AAAAC/party-parrot.gif',
-        'https://media1.tenor.com/m/3oK6v1Z9Qk8AAAAC/rick-roll.gif',
-        'https://media1.tenor.com/m/8xQn5qKjL0YAAAAC/shrek-dance.gif',
-        'https://media1.tenor.com/m/P9nQnL0Kj8YAAAAC/spongebob-laugh.gif',
-        'https://media1.tenor.com/m/2xQnKjL0N8YAAAAC/pikachu-surf.gif'
-    ];
+    const GIF_CATEGORIES = {
+        '😄 Смешные': [
+            'https://media.tenor.com/8xQn5qKjL0YAAAAi/shrek-dance.gif',
+            'https://media.tenor.com/P9nQnL0Kj8YAAAAi/spongebob-laugh.gif',
+            'https://media.tenor.com/mCiM7CmGGI4AAAAi/naruto-run.gif',
+            'https://media.tenor.com/5o7hN6qKvL0AAAAi/peach-cat.gif',
+            'https://media.tenor.com/Jk7TjGqXqEoAAAAi/dancing-banana.gif'
+        ],
+        '🐱 Животные': [
+            'https://media.tenor.com/-I9TzQqJk5oAAAAi/cat-cat-stare.gif',
+            'https://media.tenor.com/F7nLh6N0VXsAAAAi/dog-dog-stare.gif',
+            'https://media.tenor.com/3oK6v1Z9Qk8AAAAi/party-parrot.gif',
+            'https://media.tenor.com/vN8jJ5qJ8L0AAAAi/cat-dance.gif',
+            'https://media.tenor.com/2xQnKjL0N8YAAAAi/pikachu-surf.gif'
+        ],
+        '🎉 Праздничные': [
+            'https://media.tenor.com/8xQn5qKjL0YAAAAi/celebration-dance.gif',
+            'https://media.tenor.com/P9nQnL0Kj8YAAAAi/fireworks.gif',
+            'https://media.tenor.com/mCiM7CmGGI4AAAAi/happy-birthday.gif',
+            'https://media.tenor.com/5o7hN6qKvL0AAAAi/clapping.gif',
+            'https://media.tenor.com/Jk7TjGqXqEoAAAAi/party.gif'
+        ],
+        '❤️ Для настроения': [
+            'https://media.tenor.com/vN8jJ5qJ8L0AAAAi/love-heart.gif',
+            'https://media.tenor.com/3oK6v1Z9Qk8AAAAi/hug.gif',
+            'https://media.tenor.com/2xQnKjL0N8YAAAAi/thank-you.gif',
+            'https://media.tenor.com/8xQn5qKjL0YAAAAi/high-five.gif',
+            'https://media.tenor.com/P9nQnL0Kj8YAAAAi/wave.gif'
+        ]
+    };
+
+    function showGifCategories() {
+        if (!gifListDiv) return;
+        gifListDiv.innerHTML = '';
+        
+        const categories = Object.keys(GIF_CATEGORIES);
+        for (let c = 0; c < categories.length; c++) {
+            const categoryName = categories[c];
+            const categoryDiv = document.createElement('div');
+            categoryDiv.style.width = '100%';
+            categoryDiv.style.marginBottom = '10px';
+            categoryDiv.style.padding = '5px';
+            categoryDiv.style.background = 'rgba(0,0,0,0.3)';
+            categoryDiv.style.borderRadius = '10px';
+            
+            const titleSpan = document.createElement('div');
+            titleSpan.innerText = categoryName;
+            titleSpan.style.fontSize = '12px';
+            titleSpan.style.marginBottom = '5px';
+            titleSpan.style.color = '#f1c40f';
+            categoryDiv.appendChild(titleSpan);
+            
+            const gifsRow = document.createElement('div');
+            gifsRow.style.display = 'flex';
+            gifsRow.style.flexWrap = 'wrap';
+            gifsRow.style.gap = '5px';
+            
+            const gifs = GIF_CATEGORIES[categoryName];
+            for (let i = 0; i < gifs.length; i++) {
+                const img = document.createElement('img');
+                img.src = gifs[i];
+                img.className = 'gif-thumb';
+                img.style.width = '70px';
+                img.style.height = '70px';
+                img.style.objectFit = 'cover';
+                img.style.cursor = 'pointer';
+                img.onclick = async function() {
+                    await window.addNewMessage('', gifs[i]);
+                    if (gifPanel) gifPanel.style.display = 'none';
+                    if (gifSearchInput) gifSearchInput.value = '';
+                };
+                gifsRow.appendChild(img);
+            }
+            categoryDiv.appendChild(gifsRow);
+            gifListDiv.appendChild(categoryDiv);
+        }
+    }
+
+    function searchLocalGifs(searchTerm) {
+        if (!gifListDiv) return;
+        if (!searchTerm.trim()) {
+            showGifCategories();
+            return;
+        }
+        
+        const term = searchTerm.toLowerCase();
+        const matchedGifs = [];
+        
+        const allGifs = [];
+        const categories = Object.keys(GIF_CATEGORIES);
+        for (let c = 0; c < categories.length; c++) {
+            const gifs = GIF_CATEGORIES[categories[c]];
+            for (let i = 0; i < gifs.length; i++) {
+                allGifs.push(gifs[i]);
+            }
+        }
+        
+        for (let i = 0; i < allGifs.length; i++) {
+            matchedGifs.push(allGifs[i]);
+        }
+        
+        gifListDiv.innerHTML = '';
+        
+        const searchTitle = document.createElement('div');
+        searchTitle.innerText = 'Результаты поиска: ' + searchTerm;
+        searchTitle.style.width = '100%';
+        searchTitle.style.fontSize = '12px';
+        searchTitle.style.marginBottom = '10px';
+        searchTitle.style.color = '#f1c40f';
+        gifListDiv.appendChild(searchTitle);
+        
+        const gifsRow = document.createElement('div');
+        gifsRow.style.display = 'flex';
+        gifsRow.style.flexWrap = 'wrap';
+        gifsRow.style.gap = '5px';
+        
+        for (let i = 0; i < matchedGifs.length; i++) {
+            const img = document.createElement('img');
+            img.src = matchedGifs[i];
+            img.className = 'gif-thumb';
+            img.style.width = '70px';
+            img.style.height = '70px';
+            img.style.objectFit = 'cover';
+            img.style.cursor = 'pointer';
+            img.onclick = async function() {
+                await window.addNewMessage('', matchedGifs[i]);
+                if (gifPanel) gifPanel.style.display = 'none';
+                if (gifSearchInput) gifSearchInput.value = '';
+            };
+            gifsRow.appendChild(img);
+        }
+        gifListDiv.appendChild(gifsRow);
+    }
 
     if (openGifBtn) {
         openGifBtn.onclick = function(e) {
@@ -304,87 +425,19 @@
                 gifPanel.style.display = 'none';
             } else {
                 gifPanel.style.display = 'flex';
-                if (gifSearchInput) gifSearchInput.focus();
-                window.showFallbackGifs();
+                if (gifSearchInput) {
+                    gifSearchInput.value = '';
+                    gifSearchInput.focus();
+                }
+                showGifCategories();
             }
         };
     }
 
-    window.showFallbackGifs = function() {
-        if (gifListDiv) {
-            gifListDiv.innerHTML = '';
-            for (let i = 0; i < FALLBACK_GIFS.length; i++) {
-                const img = document.createElement('img');
-                img.src = FALLBACK_GIFS[i];
-                img.className = 'gif-thumb';
-                img.style.cursor = 'pointer';
-                img.onclick = async function() {
-                    await window.addNewMessage('', FALLBACK_GIFS[i]);
-                    if (gifPanel) gifPanel.style.display = 'none';
-                    if (gifListDiv) gifListDiv.innerHTML = '';
-                    if (gifSearchInput) gifSearchInput.value = '';
-                };
-                gifListDiv.appendChild(img);
-            }
-        }
-    };
-
-    window.searchGiphy = async function(searchQuery) {
-        if (!searchQuery.trim()) {
-            window.showFallbackGifs();
-            return;
-        }
-        
-        try {
-            const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-            const giphyUrl = `https://api.giphy.com/v1/gifs/search?api_key=pLUTzZ6SjLJXSwqEjE9ct0uY6hAIEZpK&q=${encodeURIComponent(searchQuery)}&limit=15&rating=g`;
-            
-            let response;
-            try {
-                response = await fetch(giphyUrl);
-            } catch(e) {
-                response = await fetch(proxyUrl + giphyUrl);
-            }
-            
-            if (!response.ok) throw new Error('GIPHY не ответил');
-            
-            const json = await response.json();
-            
-            if (gifListDiv) {
-                gifListDiv.innerHTML = '';
-                if (json.data && json.data.length > 0) {
-                    for (let i = 0; i < Math.min(json.data.length, 12); i++) {
-                        const gif = json.data[i];
-                        const img = document.createElement('img');
-                        img.src = gif.images.fixed_height_small.url;
-                        img.className = 'gif-thumb';
-                        img.style.cursor = 'pointer';
-                        img.onclick = async function() {
-                            await window.addNewMessage('', gif.images.fixed_height.url);
-                            if (gifPanel) gifPanel.style.display = 'none';
-                            if (gifListDiv) gifListDiv.innerHTML = '';
-                            if (gifSearchInput) gifSearchInput.value = '';
-                        };
-                        gifListDiv.appendChild(img);
-                    }
-                } else {
-                    window.showFallbackGifs();
-                }
-            }
-        } catch(e) {
-            console.error('Giphy error:', e);
-            window.showFallbackGifs();
-        }
-    };
-
     if (gifSearchInput) {
         gifSearchInput.oninput = function(e) {
             const val = e.target.value;
-            if (val.length > 1) {
-                window.searchGiphy(val);
-            } else {
-                window.showFallbackGifs();
-            }
+            searchLocalGifs(val);
         };
     }
 
