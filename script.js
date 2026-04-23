@@ -24,12 +24,12 @@ function formatElapsed(ms) {
     const seconds = rem % 60;
     
     const parts = [];
-    if (years) parts.push(`${years} ${decl(years, 'год', 'года', 'лет')}`);
-    if (months) parts.push(`${months} ${decl(months, 'месяц', 'месяца', 'месяцев')}`);
-    if (days) parts.push(`${days} ${decl(days, 'день', 'дня', 'дней')}`);
-    if (hours) parts.push(`${hours} ${decl(hours, 'час', 'часа', 'часов')}`);
-    if (minutes) parts.push(`${minutes} ${decl(minutes, 'минута', 'минуты', 'минут')}`);
-    if (seconds) parts.push(`${seconds} ${decl(seconds, 'секунда', 'секунды', 'секунд')}`);
+    if (years) parts.push(years + " " + decl(years, 'год', 'года', 'лет'));
+    if (months) parts.push(months + " " + decl(months, 'месяц', 'месяца', 'месяцев'));
+    if (days) parts.push(days + " " + decl(days, 'день', 'дня', 'дней'));
+    if (hours) parts.push(hours + " " + decl(hours, 'час', 'часа', 'часов'));
+    if (minutes) parts.push(minutes + " " + decl(minutes, 'минута', 'минуты', 'минут'));
+    if (seconds) parts.push(seconds + " " + decl(seconds, 'секунда', 'секунды', 'секунд'));
     return parts.join(', ');
 }
 
@@ -62,10 +62,6 @@ async function loadData() {
             users = [];
         }
         
-        for(let i = 0; i < users.length; i++) {
-            console.log('Пользователь ' + i + ':', users[i].login, users[i].password);
-        }
-        
         if (users.length === 0) {
             users = [
                 { login: 'admin', password: '123', id: Date.now() },
@@ -76,10 +72,7 @@ async function loadData() {
         
         renderMessages();
     } catch (error) {
-        console.error('Ошибка загрузки:', error);
-        messages = [];
-        users = [];
-        renderMessages();
+        console.error('load error', error);
     }
 }
 
@@ -91,17 +84,17 @@ async function saveData() {
                 'Content-Type': 'application/json',
                 'X-Master-Key': API_KEY
             },
-            body: JSON.stringify({ messages, users })
+            body: JSON.stringify({ messages: messages, users: users })
         });
     } catch (error) {
-        console.error('Ошибка сохранения:', error);
+        console.error('save error', error);
     }
 }
 
 function renderMessages() {
     const container = document.getElementById('messagesWindow');
     if (!container) return;
-    const login = currentUser?.login;
+    const currentLogin = currentUser ? currentUser.login : null;
     container.innerHTML = '';
     
     if (messages.length === 0) {
@@ -111,26 +104,32 @@ function renderMessages() {
     
     const sortedMessages = [...messages].reverse();
     
-    sortedMessages.forEach(msg => {
-        const isOwn = login === msg.username;
+    for (let i = 0; i < sortedMessages.length; i++) {
+        const msg = sortedMessages[i];
+        const isOwn = currentLogin === msg.username;
         const msgDiv = document.createElement('div');
-        msgDiv.className = `message ${isOwn ? 'message-own' : 'message-other'}`;
+        msgDiv.className = 'message ' + (isOwn ? 'message-own' : 'message-other');
         const time = new Date(msg.timestamp).toLocaleTimeString();
-        let gifHtml = msg.gifUrl ? `<img src="${msg.gifUrl}" class="msg-gif" alt="gif">` : '';
+        let gifHtml = msg.gifUrl ? '<img src="' + msg.gifUrl + '" class="msg-gif" alt="gif">' : '';
         
         let reactionsHtml = '';
         if (msg.reactions && Object.keys(msg.reactions).length) {
-            reactionsHtml = `<div class="reaction-list">${Object.entries(msg.reactions).map(([emoji, usersArr]) => 
-                `<span class="reaction-chip">${emoji} ${usersArr.length}</span>`
-            ).join('')}</div>`;
+            let reactionText = '';
+            const reactionEntries = Object.entries(msg.reactions);
+            for (let j = 0; j < reactionEntries.length; j++) {
+                reactionText += '<span class="reaction-chip">' + reactionEntries[j][0] + ' ' + reactionEntries[j][1].length + '</span>';
+            }
+            reactionsHtml = '<div class="reaction-list">' + reactionText + '</div>';
         }
         
         let reactionBtns = '';
         if (currentUser) {
             const emojis = ['❤️', '🔥', '👍', '😂', '😮'];
-            reactionBtns = `<div class="reaction-zone">${emojis.map(e => 
-                `<button class="reaction-btn" data-msgid="${msg.id}" data-emoji="${e}">${e}</button>`
-            ).join('')}</div>`;
+            let btnsHtml = '';
+            for (let j = 0; j < emojis.length; j++) {
+                btnsHtml += '<button class="reaction-btn" data-msgid="' + msg.id + '" data-emoji="' + emojis[j] + '">' + emojis[j] + '</button>';
+            }
+            reactionBtns = '<div class="reaction-zone">' + btnsHtml + '</div>';
         }
         
         msgDiv.innerHTML = `
@@ -144,29 +143,42 @@ function renderMessages() {
             ${reactionsHtml}
         `;
         container.appendChild(msgDiv);
-    });
+    }
     
     container.scrollTop = container.scrollHeight;
     
-    document.querySelectorAll('.reaction-btn').forEach(btn => {
-        btn.removeEventListener('click', reactionHandler);
-        btn.addEventListener('click', reactionHandler);
-    });
+    const reactionButtons = document.querySelectorAll('.reaction-btn');
+    for (let i = 0; i < reactionButtons.length; i++) {
+        reactionButtons[i].removeEventListener('click', reactionHandler);
+        reactionButtons[i].addEventListener('click', reactionHandler);
+    }
 }
 
 function reactionHandler(e) {
-    const msgId = parseInt(e.target.dataset.msgid);
-    const emoji = e.target.dataset.emoji;
+    const msgId = parseInt(e.target.getAttribute('data-msgid'));
+    const emoji = e.target.getAttribute('data-emoji');
     if (!currentUser) return alert("Войдите для реакций");
     toggleReaction(msgId, emoji, currentUser.login);
 }
 
 function toggleReaction(msgId, emoji, username) {
-    const msg = messages.find(m => m.id === msgId);
+    let msg = null;
+    for (let i = 0; i < messages.length; i++) {
+        if (messages[i].id === msgId) {
+            msg = messages[i];
+            break;
+        }
+    }
     if (!msg) return;
     if (!msg.reactions) msg.reactions = {};
     if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
-    const idx = msg.reactions[emoji].indexOf(username);
+    let idx = -1;
+    for (let i = 0; i < msg.reactions[emoji].length; i++) {
+        if (msg.reactions[emoji][i] === username) {
+            idx = i;
+            break;
+        }
+    }
     if (idx === -1) {
         msg.reactions[emoji].push(username);
     } else {
@@ -179,17 +191,22 @@ function toggleReaction(msgId, emoji, username) {
 
 function escapeHtml(str) {
     if (!str) return '';
-    return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m));
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
 }
 
-async function addMessage(text, gifUrl = null) {
+async function addMessage(text, gifUrl) {
     if (!currentUser) return alert("Войдите в аккаунт");
     if (!text.trim() && !gifUrl) return;
     const newMsg = {
         id: Date.now(),
         username: currentUser.login,
         text: text.trim() || '',
-        gifUrl: gifUrl,
+        gifUrl: gifUrl || null,
         timestamp: Date.now(),
         reactions: {}
     };
@@ -198,38 +215,41 @@ async function addMessage(text, gifUrl = null) {
     await loadData();
 }
 
-async function register(login, pass) {
-    if (!login || !pass) return alert("Введите логин и пароль");
-    if (users.find(u => u.login === login)) return alert("Логин занят");
-    users.push({ login: login, password: pass, id: Date.now() });
+async function registerUser(userLogin, userPass) {
+    if (!userLogin || !userPass) return alert("Введите логин и пароль");
+    let exists = false;
+    for (let i = 0; i < users.length; i++) {
+        if (users[i].login === userLogin) {
+            exists = true;
+            break;
+        }
+    }
+    if (exists) return alert("Логин занят");
+    users.push({ login: userLogin, password: userPass, id: Date.now() });
     await saveData();
     alert("Регистрация успешна! Теперь войдите.");
 }
 
-async function login(login, pass) {
-    console.log('=== ПОПЫТКА ВХОДА ===');
-    console.log('Введён логин:', login);
-    console.log('Введён пароль:', pass);
-    console.log('Всего пользователей в системе:', users.length);
-    
-    for(let i = 0; i < users.length; i++) {
-        console.log('Проверяю:', users[i].login, '==', login, '| пароль:', users[i].password, '==', pass);
-        if(users[i].login === login && users[i].password === pass) {
-            console.log('ПОЛЬЗОВАТЕЛЬ НАЙДЕН!');
-            currentUser = { login: users[i].login, id: users[i].id };
-            updateAuthUI();
-            await loadData();
-            renderMessages();
-            alert("Добро пожаловать, " + login + "!");
-            return;
+async function loginUser(userLogin, userPass) {
+    let foundUser = null;
+    for (let i = 0; i < users.length; i++) {
+        if (users[i].login === userLogin && users[i].password === userPass) {
+            foundUser = users[i];
+            break;
         }
     }
-    
-    console.log('Пользователь не найден!');
-    alert("Неверный логин или пароль");
+    if (!foundUser) {
+        alert("Неверный логин или пароль");
+        return;
+    }
+    currentUser = { login: foundUser.login, id: foundUser.id };
+    updateAuthUI();
+    await loadData();
+    renderMessages();
+    alert("Добро пожаловать, " + userLogin + "!");
 }
 
-function logout() {
+function logoutUser() {
     currentUser = null;
     updateAuthUI();
     renderMessages();
@@ -279,18 +299,19 @@ if (openGifBtn) {
     };
 }
 
-async function searchGiphy(query) {
-    if (!query.trim()) {
+async function searchGiphy(searchQuery) {
+    if (!searchQuery.trim()) {
         if (gifListDiv) gifListDiv.innerHTML = '';
         return;
     }
     try {
-        const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=12&rating=g`);
+        const res = await fetch('https://api.giphy.com/v1/gifs/search?api_key=' + GIPHY_KEY + '&q=' + encodeURIComponent(searchQuery) + '&limit=12&rating=g');
         const json = await res.json();
         if (gifListDiv) {
             gifListDiv.innerHTML = '';
             if (json.data && json.data.length) {
-                json.data.forEach(gif => {
+                for (let i = 0; i < json.data.length; i++) {
+                    const gif = json.data[i];
                     const img = document.createElement('img');
                     img.src = gif.images.fixed_height_small.url;
                     img.className = 'gif-thumb';
@@ -302,7 +323,7 @@ async function searchGiphy(query) {
                         if (gifSearchInput) gifSearchInput.value = '';
                     };
                     gifListDiv.appendChild(img);
-                });
+                }
             } else {
                 gifListDiv.innerHTML = '<span style="color:#ccc;">Гифки не найдены</span>';
             }
@@ -340,26 +361,26 @@ const messageInput = document.getElementById('messageInput');
 
 if (registerBtn) {
     registerBtn.onclick = async function() {
-        const login = document.getElementById('regLogin').value;
-        const pass = document.getElementById('regPass').value;
-        await register(login, pass);
+        const inputLogin = document.getElementById('regLogin').value;
+        const inputPass = document.getElementById('regPass').value;
+        await registerUser(inputLogin, inputPass);
     };
 }
 if (loginBtn) {
     loginBtn.onclick = async function() {
-        const login = document.getElementById('regLogin').value;
-        const pass = document.getElementById('regPass').value;
-        await login(login, pass);
+        const inputLogin = document.getElementById('regLogin').value;
+        const inputPass = document.getElementById('regPass').value;
+        await loginUser(inputLogin, inputPass);
     };
 }
 if (logoutBtnElem) {
-    logoutBtnElem.onclick = logout;
+    logoutBtnElem.onclick = logoutUser;
 }
 if (sendMsgBtn) {
     sendMsgBtn.onclick = async function() {
         const text = messageInput ? messageInput.value : '';
         if (text.trim()) {
-            await addMessage(text);
+            await addMessage(text, null);
             if (messageInput) messageInput.value = '';
         }
     };
