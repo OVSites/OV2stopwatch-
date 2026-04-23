@@ -275,11 +275,23 @@
         }
     };
 
-    const GIPHY_KEY = 'pLUTzZ6SjLJXSwqEjE9ct0uY6hAIEZpK';
     const gifPanel = document.getElementById('giphyPanel');
     const gifSearchInput = document.getElementById('gifSearch');
     const gifListDiv = document.getElementById('gifList');
     const openGifBtn = document.getElementById('openGifBtn');
+
+    const FALLBACK_GIFS = [
+        'https://media1.tenor.com/m/-I9TzQqJk5oAAAAC/cat-cat-stare.gif',
+        'https://media1.tenor.com/m/F7nLh6N0VXsAAAAC/dog-dog-stare.gif',
+        'https://media1.tenor.com/m/mCiM7CmGGI4AAAAC/naruto-run.gif',
+        'https://media1.tenor.com/m/5o7hN6qKvL0AAAAC/peach-cat.gif',
+        'https://media1.tenor.com/m/Jk7TjGqXqEoAAAAC/dancing-banana.gif',
+        'https://media1.tenor.com/m/vN8jJ5qJ8L0AAAAC/party-parrot.gif',
+        'https://media1.tenor.com/m/3oK6v1Z9Qk8AAAAC/rick-roll.gif',
+        'https://media1.tenor.com/m/8xQn5qKjL0YAAAAC/shrek-dance.gif',
+        'https://media1.tenor.com/m/P9nQnL0Kj8YAAAAC/spongebob-laugh.gif',
+        'https://media1.tenor.com/m/2xQnKjL0N8YAAAAC/pikachu-surf.gif'
+    ];
 
     if (openGifBtn) {
         openGifBtn.onclick = function(e) {
@@ -293,22 +305,55 @@
             } else {
                 gifPanel.style.display = 'flex';
                 if (gifSearchInput) gifSearchInput.focus();
+                window.showFallbackGifs();
             }
         };
     }
 
+    window.showFallbackGifs = function() {
+        if (gifListDiv) {
+            gifListDiv.innerHTML = '';
+            for (let i = 0; i < FALLBACK_GIFS.length; i++) {
+                const img = document.createElement('img');
+                img.src = FALLBACK_GIFS[i];
+                img.className = 'gif-thumb';
+                img.style.cursor = 'pointer';
+                img.onclick = async function() {
+                    await window.addNewMessage('', FALLBACK_GIFS[i]);
+                    if (gifPanel) gifPanel.style.display = 'none';
+                    if (gifListDiv) gifListDiv.innerHTML = '';
+                    if (gifSearchInput) gifSearchInput.value = '';
+                };
+                gifListDiv.appendChild(img);
+            }
+        }
+    };
+
     window.searchGiphy = async function(searchQuery) {
         if (!searchQuery.trim()) {
-            if (gifListDiv) gifListDiv.innerHTML = '';
+            window.showFallbackGifs();
             return;
         }
+        
         try {
-            const res = await fetch('https://api.giphy.com/v1/gifs/search?api_key=' + GIPHY_KEY + '&q=' + encodeURIComponent(searchQuery) + '&limit=12&rating=g');
-            const json = await res.json();
+            const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+            const giphyUrl = `https://api.giphy.com/v1/gifs/search?api_key=pLUTzZ6SjLJXSwqEjE9ct0uY6hAIEZpK&q=${encodeURIComponent(searchQuery)}&limit=15&rating=g`;
+            
+            let response;
+            try {
+                response = await fetch(giphyUrl);
+            } catch(e) {
+                response = await fetch(proxyUrl + giphyUrl);
+            }
+            
+            if (!response.ok) throw new Error('GIPHY не ответил');
+            
+            const json = await response.json();
+            
             if (gifListDiv) {
                 gifListDiv.innerHTML = '';
-                if (json.data && json.data.length) {
-                    for (let i = 0; i < json.data.length; i++) {
+                if (json.data && json.data.length > 0) {
+                    for (let i = 0; i < Math.min(json.data.length, 12); i++) {
                         const gif = json.data[i];
                         const img = document.createElement('img');
                         img.src = gif.images.fixed_height_small.url;
@@ -323,22 +368,22 @@
                         gifListDiv.appendChild(img);
                     }
                 } else {
-                    gifListDiv.innerHTML = '<span style="color:#ccc;">Гифки не найдены</span>';
+                    window.showFallbackGifs();
                 }
             }
         } catch(e) {
             console.error('Giphy error:', e);
-            if (gifListDiv) gifListDiv.innerHTML = '<span style="color:#ccc;">Ошибка загрузки гифок</span>';
+            window.showFallbackGifs();
         }
     };
 
     if (gifSearchInput) {
         gifSearchInput.oninput = function(e) {
             const val = e.target.value;
-            if (val.length > 2) {
+            if (val.length > 1) {
                 window.searchGiphy(val);
-            } else if (val.length === 0) {
-                if (gifListDiv) gifListDiv.innerHTML = '';
+            } else {
+                window.showFallbackGifs();
             }
         };
     }
