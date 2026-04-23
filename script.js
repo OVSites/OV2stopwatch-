@@ -100,15 +100,13 @@
             return;
         }
         
-        const sortedMessages = [...messages].reverse();
-        
-        for (let i = 0; i < sortedMessages.length; i++) {
-            const msg = sortedMessages[i];
+        for (let i = 0; i < messages.length; i++) {
+            const msg = messages[i];
             const isOwn = currentLogin === msg.username;
             const msgDiv = document.createElement('div');
             msgDiv.className = 'message ' + (isOwn ? 'message-own' : 'message-other');
             const time = new Date(msg.timestamp).toLocaleTimeString();
-            let gifHtml = msg.gifUrl ? '<img src="' + msg.gifUrl + '" class="msg-gif" alt="gif">' : '';
+            let gifHtml = msg.gifUrl ? '<img src="' + msg.gifUrl + '" class="msg-gif" alt="gif" style="max-width:200px; border-radius:0.5rem; margin-top:0.3rem;">' : '';
             
             let reactionsHtml = '';
             if (msg.reactions && Object.keys(msg.reactions).length) {
@@ -280,130 +278,109 @@
     const gifListDiv = document.getElementById('gifList');
     const openGifBtn = document.getElementById('openGifBtn');
 
-    const GIF_CATEGORIES = {
-        '😄 Смешные': [
-            'https://media.tenor.com/8xQn5qKjL0YAAAAi/shrek-dance.gif',
-            'https://media.tenor.com/P9nQnL0Kj8YAAAAi/spongebob-laugh.gif',
-            'https://media.tenor.com/mCiM7CmGGI4AAAAi/naruto-run.gif',
-            'https://media.tenor.com/5o7hN6qKvL0AAAAi/peach-cat.gif',
-            'https://media.tenor.com/Jk7TjGqXqEoAAAAi/dancing-banana.gif'
-        ],
-        '🐱 Животные': [
-            'https://media.tenor.com/-I9TzQqJk5oAAAAi/cat-cat-stare.gif',
-            'https://media.tenor.com/F7nLh6N0VXsAAAAi/dog-dog-stare.gif',
-            'https://media.tenor.com/3oK6v1Z9Qk8AAAAi/party-parrot.gif',
-            'https://media.tenor.com/vN8jJ5qJ8L0AAAAi/cat-dance.gif',
-            'https://media.tenor.com/2xQnKjL0N8YAAAAi/pikachu-surf.gif'
-        ],
-        '🎉 Праздничные': [
-            'https://media.tenor.com/8xQn5qKjL0YAAAAi/celebration-dance.gif',
-            'https://media.tenor.com/P9nQnL0Kj8YAAAAi/fireworks.gif',
-            'https://media.tenor.com/mCiM7CmGGI4AAAAi/happy-birthday.gif',
-            'https://media.tenor.com/5o7hN6qKvL0AAAAi/clapping.gif',
-            'https://media.tenor.com/Jk7TjGqXqEoAAAAi/party.gif'
-        ],
-        '❤️ Для настроения': [
-            'https://media.tenor.com/vN8jJ5qJ8L0AAAAi/love-heart.gif',
-            'https://media.tenor.com/3oK6v1Z9Qk8AAAAi/hug.gif',
-            'https://media.tenor.com/2xQnKjL0N8YAAAAi/thank-you.gif',
-            'https://media.tenor.com/8xQn5qKjL0YAAAAi/high-five.gif',
-            'https://media.tenor.com/P9nQnL0Kj8YAAAAi/wave.gif'
-        ]
-    };
+    const WORKING_GIFS = [
+        'https://media.tenor.com/8xQn5qKjL0YAAAAi/shrek-dance.gif',
+        'https://media.tenor.com/P9nQnL0Kj8YAAAAi/spongebob-laugh.gif',
+        'https://media.tenor.com/mCiM7CmGGI4AAAAi/naruto-run.gif',
+        'https://media.tenor.com/5o7hN6qKvL0AAAAi/peach-cat.gif',
+        'https://media.tenor.com/Jk7TjGqXqEoAAAAi/dancing-banana.gif',
+        'https://media.tenor.com/-I9TzQqJk5oAAAAi/cat-cat-stare.gif',
+        'https://media.tenor.com/F7nLh6N0VXsAAAAi/dog-dog-stare.gif',
+        'https://media.tenor.com/3oK6v1Z9Qk8AAAAi/party-parrot.gif',
+        'https://media.tenor.com/vN8jJ5qJ8L0AAAAi/cat-dance.gif',
+        'https://media.tenor.com/2xQnKjL0N8YAAAAi/pikachu-surf.gif',
+        'https://media.tenor.com/8xQn5qKjL0YAAAAi/celebration-dance.gif',
+        'https://media.tenor.com/P9nQnL0Kj8YAAAAi/fireworks.gif',
+        'https://media.tenor.com/mCiM7CmGGI4AAAAi/happy-birthday.gif',
+        'https://media.tenor.com/5o7hN6qKvL0AAAAi/clapping.gif',
+        'https://media.tenor.com/Jk7TjGqXqEoAAAAi/party.gif',
+        'https://media.tenor.com/vN8jJ5qJ8L0AAAAi/love-heart.gif',
+        'https://media.tenor.com/3oK6v1Z9Qk8AAAAi/hug.gif',
+        'https://media.tenor.com/2xQnKjL0N8YAAAAi/thank-you.gif',
+        'https://media.tenor.com/8xQn5qKjL0YAAAAi/high-five.gif',
+        'https://media.tenor.com/P9nQnL0Kj8YAAAAi/wave.gif'
+    ];
 
-    function showGifCategories() {
+    function showAllGifs() {
         if (!gifListDiv) return;
         gifListDiv.innerHTML = '';
         
-        const categories = Object.keys(GIF_CATEGORIES);
-        for (let c = 0; c < categories.length; c++) {
-            const categoryName = categories[c];
-            const categoryDiv = document.createElement('div');
-            categoryDiv.style.width = '100%';
-            categoryDiv.style.marginBottom = '10px';
-            categoryDiv.style.padding = '5px';
-            categoryDiv.style.background = 'rgba(0,0,0,0.3)';
-            categoryDiv.style.borderRadius = '10px';
-            
-            const titleSpan = document.createElement('div');
-            titleSpan.innerText = categoryName;
-            titleSpan.style.fontSize = '12px';
-            titleSpan.style.marginBottom = '5px';
-            titleSpan.style.color = '#f1c40f';
-            categoryDiv.appendChild(titleSpan);
-            
-            const gifsRow = document.createElement('div');
-            gifsRow.style.display = 'flex';
-            gifsRow.style.flexWrap = 'wrap';
-            gifsRow.style.gap = '5px';
-            
-            const gifs = GIF_CATEGORIES[categoryName];
-            for (let i = 0; i < gifs.length; i++) {
-                const img = document.createElement('img');
-                img.src = gifs[i];
-                img.className = 'gif-thumb';
-                img.style.width = '70px';
-                img.style.height = '70px';
-                img.style.objectFit = 'cover';
-                img.style.cursor = 'pointer';
-                img.onclick = async function() {
-                    await window.addNewMessage('', gifs[i]);
-                    if (gifPanel) gifPanel.style.display = 'none';
-                    if (gifSearchInput) gifSearchInput.value = '';
-                };
-                gifsRow.appendChild(img);
-            }
-            categoryDiv.appendChild(gifsRow);
-            gifListDiv.appendChild(categoryDiv);
+        const gifsRow = document.createElement('div');
+        gifsRow.style.display = 'flex';
+        gifsRow.style.flexWrap = 'wrap';
+        gifsRow.style.gap = '8px';
+        gifsRow.style.justifyContent = 'center';
+        
+        for (let i = 0; i < WORKING_GIFS.length; i++) {
+            const img = document.createElement('img');
+            img.src = WORKING_GIFS[i];
+            img.className = 'gif-thumb';
+            img.style.width = '80px';
+            img.style.height = '80px';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '12px';
+            img.style.cursor = 'pointer';
+            img.style.border = '2px solid transparent';
+            img.onmouseover = function() { this.style.border = '2px solid #f1c40f'; };
+            img.onmouseout = function() { this.style.border = '2px solid transparent'; };
+            img.onclick = async function() {
+                await window.addNewMessage('', WORKING_GIFS[i]);
+                if (gifPanel) gifPanel.style.display = 'none';
+                if (gifSearchInput) gifSearchInput.value = '';
+            };
+            gifsRow.appendChild(img);
         }
+        gifListDiv.appendChild(gifsRow);
     }
 
-    function searchLocalGifs(searchTerm) {
+    function searchGifs(searchTerm) {
         if (!gifListDiv) return;
         if (!searchTerm.trim()) {
-            showGifCategories();
+            showAllGifs();
             return;
         }
         
         const term = searchTerm.toLowerCase();
         const matchedGifs = [];
         
-        const allGifs = [];
-        const categories = Object.keys(GIF_CATEGORIES);
-        for (let c = 0; c < categories.length; c++) {
-            const gifs = GIF_CATEGORIES[categories[c]];
-            for (let i = 0; i < gifs.length; i++) {
-                allGifs.push(gifs[i]);
-            }
-        }
-        
-        for (let i = 0; i < allGifs.length; i++) {
-            matchedGifs.push(allGifs[i]);
+        for (let i = 0; i < WORKING_GIFS.length; i++) {
+            matchedGifs.push(WORKING_GIFS[i]);
         }
         
         gifListDiv.innerHTML = '';
         
+        if (matchedGifs.length === 0) {
+            gifListDiv.innerHTML = '<div style="width:100%; text-align:center; padding:20px; color:#ccc;">😔 Гифки не найдены</div>';
+            return;
+        }
+        
         const searchTitle = document.createElement('div');
-        searchTitle.innerText = 'Результаты поиска: ' + searchTerm;
+        searchTitle.innerText = '🔍 Результаты поиска: ' + searchTerm;
         searchTitle.style.width = '100%';
         searchTitle.style.fontSize = '12px';
         searchTitle.style.marginBottom = '10px';
         searchTitle.style.color = '#f1c40f';
+        searchTitle.style.textAlign = 'center';
         gifListDiv.appendChild(searchTitle);
         
         const gifsRow = document.createElement('div');
         gifsRow.style.display = 'flex';
         gifsRow.style.flexWrap = 'wrap';
-        gifsRow.style.gap = '5px';
+        gifsRow.style.gap = '8px';
+        gifsRow.style.justifyContent = 'center';
         
         for (let i = 0; i < matchedGifs.length; i++) {
             const img = document.createElement('img');
             img.src = matchedGifs[i];
             img.className = 'gif-thumb';
-            img.style.width = '70px';
-            img.style.height = '70px';
+            img.style.width = '80px';
+            img.style.height = '80px';
             img.style.objectFit = 'cover';
+            img.style.borderRadius = '12px';
             img.style.cursor = 'pointer';
+            img.style.border = '2px solid transparent';
+            img.onmouseover = function() { this.style.border = '2px solid #f1c40f'; };
+            img.onmouseout = function() { this.style.border = '2px solid transparent'; };
             img.onclick = async function() {
                 await window.addNewMessage('', matchedGifs[i]);
                 if (gifPanel) gifPanel.style.display = 'none';
@@ -429,7 +406,7 @@
                     gifSearchInput.value = '';
                     gifSearchInput.focus();
                 }
-                showGifCategories();
+                showAllGifs();
             }
         };
     }
@@ -437,7 +414,7 @@
     if (gifSearchInput) {
         gifSearchInput.oninput = function(e) {
             const val = e.target.value;
-            searchLocalGifs(val);
+            searchGifs(val);
         };
     }
 
