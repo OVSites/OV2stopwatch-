@@ -288,17 +288,7 @@
         'https://media.tenor.com/F7nLh6N0VXsAAAAi/dog-dog-stare.gif',
         'https://media.tenor.com/3oK6v1Z9Qk8AAAAi/party-parrot.gif',
         'https://media.tenor.com/vN8jJ5qJ8L0AAAAi/cat-dance.gif',
-        'https://media.tenor.com/2xQnKjL0N8YAAAAi/pikachu-surf.gif',
-        'https://media.tenor.com/8xQn5qKjL0YAAAAi/celebration-dance.gif',
-        'https://media.tenor.com/P9nQnL0Kj8YAAAAi/fireworks.gif',
-        'https://media.tenor.com/mCiM7CmGGI4AAAAi/happy-birthday.gif',
-        'https://media.tenor.com/5o7hN6qKvL0AAAAi/clapping.gif',
-        'https://media.tenor.com/Jk7TjGqXqEoAAAAi/party.gif',
-        'https://media.tenor.com/vN8jJ5qJ8L0AAAAi/love-heart.gif',
-        'https://media.tenor.com/3oK6v1Z9Qk8AAAAi/hug.gif',
-        'https://media.tenor.com/2xQnKjL0N8YAAAAi/thank-you.gif',
-        'https://media.tenor.com/8xQn5qKjL0YAAAAi/high-five.gif',
-        'https://media.tenor.com/P9nQnL0Kj8YAAAAi/wave.gif'
+        'https://media.tenor.com/2xQnKjL0N8YAAAAi/pikachu-surf.gif'
     ];
 
     function showAllGifs() {
